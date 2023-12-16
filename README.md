@@ -92,7 +92,6 @@ FROM manytask/checker:0.0.1-python3.12
 ```
 Please check [docker hub](https://hub.docker.com/r/manytask/checker) for available tags.
 
-
 ## Contributing
 
 Really appreciate any contributions!  
