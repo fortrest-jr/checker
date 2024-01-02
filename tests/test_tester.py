@@ -38,6 +38,12 @@ def get_env_pipeline() -> list[PipelineStageConfig]:
 
 class TestTester:
     # TODO: mock of course
+    #   mock of checker_config
+    #       mock of testing_config
+    #       mock of default_params
+    #   repository_dir
+    #   reference_dir
+    #   get_tasks
 
     # TODO: test init
 
