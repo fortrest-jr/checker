@@ -1,11 +1,16 @@
 from __future__ import annotations
 
+import os
+from pathlib import Path
 from typing import Type
 
 import pytest
+from pytest import CaptureFixture
 from pytest_mock import MockFixture
 
-from checker.configs import PipelineStageConfig, CheckerConfig
+from checker import plugins
+from checker import tester
+from checker.configs import PipelineStageConfig, CheckerConfig, CheckerTestingConfig
 from checker.course import Course
 from checker.plugins import PluginABC, PluginOutput
 
@@ -21,7 +26,7 @@ class _OutputEnvPlugin(PluginABC):
 
 
 @pytest.fixture
-def get_env_plugin() -> dict[str, Type[PluginABC]]:
+def get_env_plugins() -> dict[str, Type[PluginABC]]:
     return {
         "env": _OutputEnvPlugin,
     }
@@ -41,16 +46,19 @@ def get_env_pipeline() -> list[PipelineStageConfig]:
 @pytest.fixture
 def no_tasks_course(mocker: MockFixture) -> Course:
     instance = mocker.Mock(spec=Course)
-    instance.repository_dir = ''
-    instance.reference_dir = None
+    instance.repository_root = Path('')
+    instance.reference_root = instance.repository_root
     instance.get_tasks.return_value = []
     return instance
 
 
 @pytest.fixture
-def get_env_checker_config(mocker: MockFixture, get_env_pipeline: list[PipelineStageConfig]) -> Course:
+def get_env_checker_config(mocker: MockFixture,
+                           get_env_pipeline: list[PipelineStageConfig]) -> CheckerConfig:
+    # example: https://github.com/manytask/course-template/blob/main/.checker.yml
     instance = mocker.Mock(spec=CheckerConfig)
-    instance.testing.search_plugins
+    instance.testing = mocker.Mock(spec=CheckerTestingConfig)
+    instance.testing.search_plugins = []
     instance.testing.global_pipeline = get_env_pipeline
     instance.testing.tasks_pipeline = []
     instance.testing.report_pipeline = []
@@ -60,12 +68,23 @@ def get_env_checker_config(mocker: MockFixture, get_env_pipeline: list[PipelineS
 
 
 class TestTester:
-    # TODO: mock of checker_config, example: https://github.com/manytask/course-template/blob/main/.checker.yml
-    #   mock of testing_config
-    #   mock of structure_config with None
-    #   mock of default_params
+    def test_env_var_through_plugin(self,
+                                    mocker: MockFixture,
+                                    capsys: CaptureFixture[str],
+                                    get_env_pipeline: dict[str, Type[PluginABC]],
+                                    get_env_checker_config: CheckerConfig,
+                                    no_tasks_course: Course) -> None:
+        env_var_name = 'ENV_VAR'
+        env_var_val = "Test val 987"
+        os.environ[env_var_name] = env_var_val
 
-    # TODO: mock pipelineRunner, not pass pipeline?
+        mocker.patch.object(plugins, 'load_plugins')
+        plugins.load_plugins.return_value = get_env_plugins
+        tester_instance = tester.Tester(no_tasks_course, get_env_checker_config)
+        tester_instance.run(Path(''))
+        _, err = capsys.readouterr()
+
+        assert env_var_val in err
 
     # TODO: test init
 
